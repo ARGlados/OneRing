@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - glTF loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+	</head>
+
+	<body style="background-color: #fff;">
+		<div class="parent"><blockquote class="overlay">
+			<img src="layerf.svg" width=100% height=100% alt="">
+		  </blockquote></div>
+		<div id="container"> </div>
+		<script type="module">
+
+			import * as THREE from './three.module.js';
+
+			import { OrbitControls } from './OrbitControls.js';
+			import { GLTFLoader } from './GLTFLoader.js';
+			import { RGBELoader } from './RGBELoader.js';
+			import { RoughnessMipmapper } from './RoughnessMipmapper.js';
+
+			let camera, scene, renderer,vector,group,wrapper;
+			//
+			//
+			var mouseObj,mouse2D, mouse3D, container,ring,obj2;
+			var width = window.innerWidth, height = window.innerHeight;
+			var halfWidth = window.innerWidth / 2, halfHeight = window.innerHeight / 2; 
+
+			function init() {
+				//const container = document.createElement( 'div' );
+
+				const container = document.getElementById( 'container' );
+				container.className = "canvasContainer";
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 90, (window.innerWidth) / (window.innerHeight), 0.25, 20 );
+				camera.position.set( - 1.8*100, 0.6*100, -2.7*100 );
+				vector = new THREE.Vector3();
+				
+				scene = new THREE.Scene();
+				mouse3D = new THREE.Vector3();
+    			mouse2D = new THREE.Vector2();
+    			mouseObj = { x: 0, y: 0, percentX: 0, percentY: 0, lastX: 0, lastY: 0 };
+
+    
+    			wrapper = new THREE.Object3D();
+    			group = new THREE.Object3D();
+
+				scene.add( wrapper );
+    			wrapper.add( group );
+
+				new RGBELoader()
+					.setDataType( THREE.UnsignedByteType )
+					.setPath( 'textures/here/' )
+					.load( 'royal_esplanade_1k.hdr', function ( texture ) {
+
+						const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
+
+						scene.background = envMap;
+						scene.environment = envMap;
+
+						texture.dispose();
+						pmremGenerator.dispose();
+
+						//render();
+
+						// model
+
+						// use of RoughnessMipmapper is optional
+						const roughnessMipmapper = new RoughnessMipmapper( renderer );
+
+						const loader = new GLTFLoader().setPath( 'ring/' );
+						loader.load( 'scene.gltf', function ( gltf ) {
+
+							gltf.scene.traverse( function ( child ) {
+
+								if ( child.isMesh ) {
+
+									// TOFIX RoughnessMipmapper seems to be broken with WebGL 2.0
+									// roughnessMipmapper.generateMipmaps( child.material );
+
+								}
+
+							} );
+
+							//
+							ring = gltf.scene;
+							ring.autoUpdateMatrix = false;
+							ring.useQuaternion = true;
+							console.log(ring)
+							obj2 = ring;
+							//
+							group.add( ring );
+
+							roughnessMipmapper.dispose();
+
+							//render();
+
+						} );
+
+					} );
+				
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				//renderer.setSize( window.innerWidth*0.191, window.innerWidth*0.14 );
+				renderer.setSize( window.innerWidth, window.innerHeight )
+				renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				renderer.toneMappingExposure = 2;
+				renderer.outputEncoding = THREE.sRGBEncoding;
+				container.appendChild( renderer.domElement );
+
+				var touchDevice = 'ontouchstart' in document.documentElement;
+
+				if( touchDevice )
+				{}
+				else
+				{
+					document.addEventListener('mousemove', onDocumentMouseMove, false);
+				}
+
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
+				pmremGenerator.compileEquirectangularShader();
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render ); // use if there is no animation loop
+				controls.minDistance = 0.1;
+				controls.maxDistance = 2;
+				controls.target.set( 0, 0, - 0.1 );
+				controls.update();
+
+				
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function animate()
+			{
+				requestAnimationFrame( animate );
+				render();
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = (window.innerWidth) / (window.innerHeight);
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight);
+
+				render();
+
+			}
+
+			//
+			function addDebugAxisToObject( axisLength, target )
+			{
+				function v( x, y, z )
+				{
+					return new THREE.Vector3(x,y,z);
+				}
+			
+			}
+
+			function updateRotationVector()
+{
+
+    var step = 100 / 3;
+    var x = 0, y = 0;
+    
+    var prc = Math.ceil( ( mouseObj.lastY / height ) * 100 );
+    if( Math.ceil( prc / step ) == 1 ) x = -1;
+    if( Math.ceil( prc / step ) == 2 ) x = 0;
+    if( Math.ceil( prc / step ) == 3 ) x = 1;
+    
+    var prc = Math.ceil( ( mouseObj.lastX / width ) * 100 );
+    if( Math.ceil( prc / step ) == 1 ) y = -1;
+    if( Math.ceil( prc / step ) == 2 ) y = 0;
+    if( Math.ceil( prc / step ) == 3 ) y = 1;
+    
+   
+    vector = new THREE.Vector3( mouseObj.percentX, mouseObj.percentY, 0 ).normalize();
+}
+
+function updateMouseLookAt()
+{
+    var inverted = true;
+    var x = ( mouseObj.lastX / width ) * 2 - 1;
+    var y = -( mouseObj.lastY / height ) * 2 + 1
+    if( inverted == true )
+    {
+        x *=-1;
+        y *=-1;
+    }
+
+    mouse3D = new THREE.Vector3( x, y, 0.5 );
+}
+
+function checkVector( v )
+{
+    if( v.x != vector.x || v.y != vector.y ) return true;
+        else return false;
+}
+
+
+function onDocumentMouseMove(event)
+{
+    mouse2D.x = ( event.pageX / width ) * 2 - 1;
+    mouse2D.y = - ( event.pageY / height ) * 2 + 1;
+
+    mouseObj.x = event.pageX - halfWidth;
+    mouseObj.y = event.pageY - halfHeight;
+    mouseObj.percentX = Math.ceil( ( mouseObj.x / halfWidth ) * 100 );
+    mouseObj.percentY = Math.ceil( ( mouseObj.y / halfHeight ) * 100 );
+    mouseObj.lastX = event.pageX;
+    mouseObj.lastY = event.pageY;
+    
+    updateMouseLookAt();
+    
+    updateRotationVector();
+}
+
+function onDocumentTouchStart(event)
+{
+    if(event.touches.length === 1)
+    {
+        event.preventDefault();
+    }
+}
+
+function onDocumentTouchMove(event)
+{
+    if(event.touches.length === 1)
+    {
+        event.preventDefault();
+    }
+}
+
+function onDocumentMouseDown(event)
+{
+    event.preventDefault();
+}
+
+function onDocumentMouseUp( event )
+{
+    event.preventDefault();
+}
+
+			//
+			function render() {
+				var step = .025;    
+    			var rotateQuaternion = new THREE.Quaternion();
+    			rotateQuaternion.setFromAxisAngle( vector, step );
+
+
+    			var v = new THREE.Vector3( mouse2D.y, -mouse2D.x, 0 );//.normalize();
+    			var q = new THREE.Quaternion().setFromEuler( new THREE.Euler(mouse2D.y, -mouse2D.x, 0 )); //change to v
+    			var newQuaternion = new THREE.Quaternion();
+				//console.log(ring)
+    			if(obj2){
+					THREE.Quaternion.slerp( obj2.quaternion, q, newQuaternion, 0.27 );
+				obj2.quaternion.set(newQuaternion.x,newQuaternion.y,newQuaternion.z,newQuaternion.w);
+				obj2.quaternion.normalize();
+				}
+				renderer.render( scene, camera );
+			}
+			
+
+
+			init();
+			animate();
+		</script>
+
+
+	</body>
+</html>
+<style>
+.parent{
+  height:100vh;
+  position:fixed;
+  background-size:cover;
+}
+.overlay{
+  background-color:rgba(1,0.2,0,.5);
+  color:white;
+  border:solid 1px white;
+  position:fixed;
+  left:0;
+  top:0;
+  right:0;
+  bottom:0;
+  margin:auto;
+  width:100%;
+  height:100%;
+  z-index: 1;
+  /*animate*/
+  transition:all 0.3s ease-in;
+}
+
+/* hover effect*/
+/* .parent:hover .overlay{
+  opacity:0;
+  pointer-events:none;
+} */
+
+</style>
+
+<script>
+	$('.parent').mouseenter(function(){
+	$('.overlay').css('opacity', '0');
+	$('.overlay').css({ visibility: 'hidden' });
+	
+  });
+$('.parent').mouseleave(function(){
+	$('.overlay').css('opacity', '100');
+  })
+</script>
